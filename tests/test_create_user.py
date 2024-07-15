@@ -9,8 +9,22 @@ from helpers import HelpersOnCreateUser
 
 
 
-class TestCreateUser:
+@pytest.fixture
+@allure.title('Инициализируем данные пользователя для удаления после завершения работы')
+def setup_user():
+    # Инициализируем данные пользователя для удаления после завершения работы
+    TestCreateUser.to_teardown = False
+    TestCreateUser.auth_token = None
 
+    yield
+    # Удаляем созданного пользователя
+    if TestCreateUser.to_teardown:
+        HelpersOnCreateUser.try_to_delete_user(TestCreateUser.auth_token)
+
+
+
+class TestCreateUser:
+  
     to_teardown = False  # Выполнять удаление созданного пользователя
     auth_token = None
 
@@ -21,6 +35,7 @@ class TestCreateUser:
 
 
     @allure.title('Проверка создания пользователя - регистрация уникального пользователя')
+
     def test_create_user_new_user(self, create_user, generate_payload):
         user_data = HelpersOnCreateUser.generate_random_user_data()
         created_user = User.create_user(user_data)
@@ -35,6 +50,11 @@ class TestCreateUser:
         req_cr_user = User.create_user(data_user)
         assert req_cr_user.json()['success'] == True
         assert req_cr_user.status_code == HTTPStatus.OK
+
+    def test_create_user_new_user(self, setup_user):
+        user_data = HelpersOnCreateUser.generate_random_user_data()
+        auth_token, refresh_token = HelpersOnCreateUser.create_and_check_user(user_data)
+        self.__init_teardown(auth_token)
 
 
     @allure.title('Проверка создания пользователя - повторная регистрация пользователя')
